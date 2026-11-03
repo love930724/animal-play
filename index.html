@@ -36,13 +36,13 @@ body{background:var(--sky)}
 #bar .sp button.sel{background:var(--ink);color:var(--white)}
 #prog{font-weight:900;font-size:max(16px,2.8vmin);background:var(--white);padding:8px 16px;border-radius:99px}
 #stage{position:absolute;inset:0;touch-action:manipulation}
-.sprite{position:absolute;font-size:min(26vw,38vh);line-height:1;width:1.2em;height:1.2em;margin-left:-.6em;display:grid;place-items:center}
+.sprite{position:absolute;font-size:min(30vw,44vh);line-height:1;width:1.2em;height:1.2em;margin-left:-.6em;display:grid;place-items:center}
 .sprite .in{display:grid;place-items:center;width:100%;height:100%}
 .sprite img{width:100%;height:100%;object-fit:contain}
 .flip{transform:scaleX(-1);display:inline-block}
 /* rabbit */
 #rabbit{background:linear-gradient(#ffe3ec 0 55%,var(--grass) 55%)}
-#world{position:absolute;top:62%;left:0;height:22vh;display:flex;transform:translateX(22.5vw)}
+#world{position:absolute;top:66%;left:0;height:22vh;display:flex;transform:translateX(22.5vw)}
 .cell{flex:0 0 15vw;margin-right:1vw;border-radius:2vmin;background:#fff;border:.8vmin solid #f08aa8;display:grid;place-items:center;font-size:min(3vw,5vh);font-weight:900;color:#f08aa8}
 .cell.done{background:#ffe0ea}.cell.end{flex:0 0 28vw;background:var(--sun);border-color:#e0a100;color:#a06b00;font-size:min(3vw,5vh);position:relative}
 .cell.end::after{content:"";position:absolute;left:-3.6vw;top:-48vh;height:78vh;width:3.2vw;background:conic-gradient(#23324a 25%,#fff 0 50%,#23324a 0 75%,#fff 0) 0 0/3.2vw 3.2vw;border:.3vw solid #23324a}
@@ -78,8 +78,7 @@ body{background:var(--sky)}
   <button class="tile" id="t-rabbit" data-go="rabbit"><div class="pic" id="p-rabbit">🐇</div><b>兔子</b></button>
   <button class="tile" id="t-dog" data-go="dog"><div class="pic" id="p-dog">🐕</div><b>小狗</b></button>
   <button class="tile" id="t-snake" data-go="snake"><div class="pic" id="p-snake">🐍</div><b>蛇</b></button>
-  <div id="photos"><span>兔子：<label>卡片圖<input type="file" accept="image/*" data-a="rabbit" data-k="card"></label> / <label>去背角色<input type="file" accept="image/*" data-a="rabbit" data-k="sprite"></label></span><span>小狗：<label>卡片圖<input type="file" accept="image/*" data-a="dog" data-k="card"></label> / <label>去背角色<input type="file" accept="image/*" data-a="dog" data-k="sprite"></label></span><span>蛇：<label>卡片圖<input type="file" accept="image/*" data-a="snake" data-k="card"></label> / <label>去背角色<input type="file" accept="image/*" data-a="snake" data-k="sprite"></label></span></div>
-</div>
+  </div>
 
 <div id="level" class="screen">
   <div id="bar">
@@ -121,9 +120,16 @@ function noise(c,t,len,f0,f1,f2,pk){
   src.connect(f);f.connect(g);g.connect(c.destination);src.start(t);
 }
 var sfx={
-  rabbit:function(T){var c=ac();if(!c||muted)return;var t=c.currentTime;
-    tone(c,'sine',230,760,t,.02,.5,.18);            // 嗶～跳起來
-    tone(c,'triangle',150,55,t+T*.00085,.01,.5,.16); // 咚！落地
+  rabbit:function(){var c=ac();if(!c||muted)return;var t=c.currentTime;
+    // ㄉㄨㄞ
+    tone(c,'triangle',170,520,t,.015,.5,.1);
+    // ㄧㄛ～（彈簧尾音，帶顫音）
+    var t2=t+.12,o=c.createOscillator(),g=c.createGain(),l=c.createOscillator(),lg=c.createGain();
+    o.type='sine';o.frequency.setValueAtTime(380,t2);
+    o.frequency.exponentialRampToValueAtTime(980,t2+.12);o.frequency.exponentialRampToValueAtTime(430,t2+.5);
+    l.frequency.value=24;lg.gain.value=45;l.connect(lg);lg.connect(o.frequency);
+    env(g,t2,.02,.5,.5);o.connect(g);g.connect(c.destination);
+    o.start(t2);l.start(t2);o.stop(t2+.6);l.stop(t2+.6);
   },
   dog:function(){var c=ac();if(!c||muted)return;var t=c.currentTime;
     [0,.2].forEach(function(o,i){
@@ -132,8 +138,15 @@ var sfx={
     });
   },
   snake:function(){var c=ac();if(!c||muted)return;var t=c.currentTime;
-    noise(c,t,.6,700,2800,900,.5);
-    tone(c,'sine',500,900,t+.05,.1,.05,.4);
+    [0,.42].forEach(function(o){
+      var len=.4,buf=c.createBuffer(1,Math.floor(c.sampleRate*len),c.sampleRate),d=buf.getChannelData(0);
+      for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+      var src=c.createBufferSource();src.buffer=buf;
+      var hp=c.createBiquadFilter();hp.type='highpass';hp.frequency.value=3800;
+      var bp=c.createBiquadFilter();bp.type='peaking';bp.frequency.value=6500;bp.gain.value=8;
+      var g=c.createGain();env(g,t+o,.08,.55,.3);
+      src.connect(hp);hp.connect(bp);bp.connect(g);g.connect(c.destination);src.start(t+o);
+    });
   },
   count:function(go){var c=ac();if(!c||muted)return;var t=c.currentTime;
     if(go){tone(c,'triangle',784,784,t,.01,.45,.5);tone(c,'triangle',1175,1175,t,.01,.4,.5);tone(c,'sine',1568,1568,t+.08,.01,.25,.45)}
@@ -161,15 +174,6 @@ function refreshMenu(){
     $('#p-'+a).innerHTML=c?'<img src="'+c+'" alt="">':icon[a];
   });
 }
-document.querySelectorAll('#photos input').forEach(function(inp){
-  inp.addEventListener('change',function(){
-    var f=inp.files[0]; if(!f) return;
-    var r=new FileReader();
-    r.onload=function(){photos[inp.dataset.a][inp.dataset.k]=r.result;refreshMenu();};
-    r.readAsDataURL(f);
-  });
-});
-$('#photos').addEventListener('click',function(e){e.stopPropagation()});
 
 document.querySelectorAll('.tile').forEach(function(t){
   t.addEventListener('click',function(){start(t.dataset.go)});
@@ -212,7 +216,7 @@ function countdown(g){
       el.style.display='grid';el.textContent=s;el.className=s==='GO!'?'go':'';
       el.style.animation='none';void el.offsetWidth;el.style.animation='';
       sfx.count(i===3);
-      if(i===3)setTimeout(function(){if(g===gid){el.style.display='none';locked=false}},700);
+      if(i===3)setTimeout(function(){if(g===gid){el.style.display='none';locked=false;if(cur==='dog')sfx.dog()}},700);
     },i*900);
   });
 }
@@ -251,20 +255,20 @@ function rabbit(g){
   total=21;
   var h='';
   for(var i=0;i<=total;i++) h+='<div class="cell'+(i==total?' end':'')+'">'+(i==0?'起':i==total?'終點':i)+'</div>';
-  stage.innerHTML='<div id="rabbit" style="position:absolute;inset:0;overflow:hidden"><div id="world">'+h+'</div><div class="sprite" id="sp" style="bottom:38%;left:30vw"><div class="in">'+face('rabbit',true)+'</div></div></div>';
+  stage.innerHTML='<div id="rabbit" style="position:absolute;inset:0;overflow:hidden"><div id="world">'+h+'</div><div class="sprite" id="sp" style="bottom:34%;left:30vw"><div class="in">'+face('rabbit',true)+'</div></div></div>';
   var sp=$('#sp'),world=$('#world'),cells=world.querySelectorAll('.cell'),q=0,done=0,running=false;
   cells[0].classList.add('done');
   sp.firstChild.style.transformOrigin='50% 100%';
   function run(){
     if(g!==gid)return;
     if(q==0){running=false;if(done>=total)finish();return}
-    q--;done++;var n=done,T=dur;sfx.rabbit(T);
+    q--;done++;var n=done,T=dur;if(n%3===0)sfx.rabbit();
     world.style.transition='transform '+T+'ms linear';
-    world.style.transform='translateX('+(22.5-n*16-(n==total?8:0))+'vw)';
+    world.style.transform='translateX('+(22.5-n*16-(n==total?10:0))+'vw)';
     sp.firstChild.animate([
       {transform:'translateY(0) scale(1,1) rotate(0)',offset:0},
       {transform:'translateY(1vh) scale(1.2,.78) rotate(0)',offset:.14},
-      {transform:'translateY(-16vh) scale(.88,1.22) rotate(-7deg)',offset:.5},
+      {transform:'translateY(-14vh) scale(.88,1.22) rotate(-7deg)',offset:.5},
       {transform:'translateY(-2vh) scale(.95,1.08) rotate(4deg)',offset:.8},
       {transform:'translateY(1vh) scale(1.2,.8) rotate(0)',offset:.93},
       {transform:'translateY(0) scale(1,1) rotate(0)',offset:1}],{duration:T,easing:'ease-in-out'});
@@ -287,9 +291,10 @@ function dog(g){
     '<path d="'+D+'" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="18 18" opacity=".6"/>'+
     '<defs><pattern id="chk" x="484" y="372" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="32" fill="#fff"/><rect width="16" height="16" fill="#23324a"/><rect x="16" y="16" width="16" height="16" fill="#23324a"/></pattern></defs><rect x="484" y="372" width="32" height="160" fill="url(#chk)" stroke="#23324a" stroke-width="3"/>'+
     '<text id="lapt" x="500" y="330" font-size="110" font-weight="900" text-anchor="middle" fill="#fff" opacity=".85" style="paint-order:stroke" stroke="#5aa85c" stroke-width="10">第 1 圈</text><path id="run" d="'+R+'" fill="none"/><g id="dg">'+face2+'</g></svg></div>';
-  var run=$('#run'),dg=$('#dg'),lt=$('#lapt'),L=run.getTotalLength(),fl=1,shown=0;
+  var run=$('#run'),dg=$('#dg'),lt=$('#lapt'),L=run.getTotalLength(),fl=1,shown=0,lapsDone=0;
   function put(f,mv,ts){
-    var lap=Math.min(5,Math.floor(f+1e-4)+1);if(lap!==shown){shown=lap;lt.textContent='第 '+lap+' 圈'}
+    var ld=Math.floor(f+1e-4);if(ld>lapsDone){lapsDone=ld;sfx.dog()}
+    var lap=Math.min(5,ld+1);if(lap!==shown){shown=lap;lt.textContent='第 '+lap+' 圈'}
     var u=f%1,p=run.getPointAtLength(u*L),q=run.getPointAtLength(Math.min(L,u*L+3)),dx=q.x-p.x;
     if(Math.abs(dx)>.5) fl=dx>0?-1:1;
     var s=Math.sin((ts||0)/75)*mv,bob=Math.abs(s)*34,tilt=s*7;
@@ -297,7 +302,7 @@ function dog(g){
   }
   put(0,0,0);
   var m=mover(g,function(){return (5/total)/(dur*1.4)},put,function(){if(step>=total)finish()});
-  return {next:function(){step++;setProg();sfx.dog();m.go(step>=total?5.1:step/total*5)}};
+  return {next:function(){step++;setProg();m.go(step>=total?5.1:step/total*5)}};
 }
 
 /* 蛇：S 彎繞過呼拉圈，畫面跟著捲，連點會一路扭下去 */
@@ -330,7 +335,7 @@ function snake(g){
   var base=startX+len;
   var m2=mover(g,function(){return (step>=total?3:1)*d/(dur*1.2)},function(p){draw(base+p)},function(){if(step>=total)finish()});
   return {next:function(){
-    step++;setProg();sfx.snake();
+    step++;setProg();if(step%3===0)sfx.snake();
     var tx=step>=total?flagX+500+len+300:hx(step-1)+d*.5;
     m2.go(tx-base);
   }};
